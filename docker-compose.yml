@@ -1,0 +1,75 @@
+services:
+  database:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB:-mini_soc}"
+      POSTGRES_USER: "${POSTGRES_USER:-soc}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-socpass}"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  detector-api:
+    build:
+      context: ./backend
+    environment:
+      DATABASE_URL: "${DATABASE_URL:-postgresql+psycopg://soc:socpass@database:5432/mini_soc}"
+    ports:
+      - "${DETECTOR_API_PORT:-8001}:8000"
+    depends_on:
+      database:
+        condition: service_healthy
+    volumes:
+      - ./logs/nginx:/var/log/nginx:ro
+      - ./logs/app:/var/log/vulnerable-web-app:ro
+
+  vulnerable-web-app:
+    build:
+      context: ./vulnerable-web-app
+    environment:
+      AUTH_LOG_PATH: /var/log/vulnerable-web-app/auth.log
+    expose:
+      - "8000"
+    volumes:
+      - ./logs/app:/var/log/vulnerable-web-app
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      - vulnerable-web-app
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./logs/nginx:/var/log/nginx
+
+  dashboard:
+    build:
+      context: ./dashboard
+      args:
+        VITE_API_BASE_URL: "${VITE_API_BASE_URL:-http://localhost:8001}"
+    ports:
+      - "${DASHBOARD_PORT:-3000}:80"
+    depends_on:
+      - detector-api
+
+  notifier:
+    build:
+      context: ./backend
+    command: ["python", "-m", "detector_api.notifier_service"]
+    environment:
+      DETECTOR_API_URL: "http://detector-api:8000"
+      DISCORD_WEBHOOK_URL: "${DISCORD_WEBHOOK_URL:-}"
+      SLACK_WEBHOOK_URL: "${SLACK_WEBHOOK_URL:-}"
+      NOTIFIER_POLL_INTERVAL_SECONDS: "${NOTIFIER_POLL_INTERVAL_SECONDS:-15}"
+    depends_on:
+      - detector-api
+
+volumes:
+  postgres_data:

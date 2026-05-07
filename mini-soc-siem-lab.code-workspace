@@ -1,0 +1,27 @@
+{
+  "folders": [
+    {
+      "path": "."
+    },
+    {
+      "name": "backend",
+      "path": "backend"
+    },
+    {
+      "name": "dashboard",
+      "path": "dashboard"
+    },
+    {
+      "name": "vulnerable-web-app",
+      "path": "vulnerable-web-app"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/__pycache__": true,
+      "**/node_modules": true,
+      "**/dist": true
+    }
+  }
+}
+
