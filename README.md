@@ -67,6 +67,7 @@ mini-soc-siem-lab/
 - Detection rules for brute force, SQL Injection, XSS, path traversal,
   directory discovery, and suspicious User-Agent strings.
 - Alert persistence with severity, evidence, recommendation, and status.
+- Optional scheduled detection in `detector-api`.
 - Dashboard summary with total events, High / Medium / Low counts, attack type
   counts, source IP ranking, and latest alerts.
 - Optional Discord or Slack webhook notification.
@@ -144,20 +145,36 @@ Generate and ingest dummy sample logs:
 python scripts/generate_sample_logs.py --send
 ```
 
-Run detection:
+Run detection manually:
 
 ```bash
 curl -X POST http://localhost:8001/detect/run
 ```
+
+When running through Docker Compose, scheduled detection is enabled by default.
+After ingesting sample logs, wait up to `DETECTION_INTERVAL_SECONDS` seconds
+and refresh the dashboard. Manual `/detect/run` is still useful when you want
+immediate results.
 
 View alerts:
 
 ```bash
 curl http://localhost:8001/alerts
 curl http://localhost:8001/stats/summary
+curl http://localhost:8001/detect/scheduler
 ```
 
 The dashboard at http://localhost:3000 refreshes automatically every 15 seconds.
+
+Scheduled detection can be controlled with:
+
+```env
+DETECTION_SCHEDULER_ENABLED=true
+DETECTION_INTERVAL_SECONDS=30
+```
+
+Set `DETECTION_SCHEDULER_ENABLED=false` if you want to keep detection fully
+manual while debugging.
 
 ## Demo Commands
 
@@ -166,12 +183,12 @@ Generate local HTTP traffic against only the Docker Compose web app:
 ```bash
 python scripts/send_demo_requests.py --base-url http://localhost:8080
 python scripts/ingest_local_logs.py
-curl -X POST http://localhost:8001/detect/run
 ```
 
 This script refuses non-local targets. It is meant to create local Nginx and app
 logs for inspection, not to test third-party systems. `ingest_local_logs.py`
-reads the local Compose log files and submits them to the detector API.
+reads the local Compose log files and submits them to the detector API. With the
+scheduler enabled, alerts are created automatically shortly after ingest.
 
 Write sample logs to a file:
 
@@ -298,11 +315,13 @@ Command:
 
 ```bash
 curl http://localhost:8001/stats/summary
+curl http://localhost:8001/detect/scheduler
 docker compose logs notifier
 ```
 
-Expected result: the summary contains counts and latest alerts. If no webhook URL
-is configured, the notifier prints alert messages to stdout.
+Expected result: the summary contains counts and latest alerts, and scheduler
+status shows whether automatic detection is enabled. If no webhook URL is
+configured, the notifier prints alert messages to stdout.
 
 ### Phase 5: dashboard, tests, and CI
 

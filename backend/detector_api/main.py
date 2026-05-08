@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Sequence
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from typing import Any
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Query
@@ -14,6 +15,11 @@ from detector_api.detection.engine import run_detection, seed_detection_rules
 from detector_api.ingest.auth_parser import normalize_auth_log
 from detector_api.ingest.nginx_parser import normalize_nginx_log
 from detector_api.models import Alert, AuthEvent, Event
+from detector_api.scheduler import (
+    detection_scheduler_loop,
+    get_detection_scheduler_status,
+    is_detection_scheduler_enabled,
+)
 from detector_api.schemas import (
     AlertOut,
     CountItem,
@@ -29,7 +35,18 @@ async def lifespan(_: FastAPI):
     init_db()
     with SessionLocal() as db:
         seed_detection_rules(db)
-    yield
+
+    scheduler_task: asyncio.Task | None = None
+    if is_detection_scheduler_enabled():
+        scheduler_task = asyncio.create_task(detection_scheduler_loop())
+
+    try:
+        yield
+    finally:
+        if scheduler_task:
+            scheduler_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await scheduler_task
 
 
 app = FastAPI(
@@ -89,6 +106,11 @@ def detect_run(db: Session = Depends(get_db)) -> DetectionRunResult:
         created_alerts=len(alerts),
         alerts=[AlertOut.model_validate(alert) for alert in alerts],
     )
+
+
+@app.get("/detect/scheduler")
+def detect_scheduler_status() -> dict[str, Any]:
+    return get_detection_scheduler_status()
 
 
 @app.get("/alerts", response_model=list[AlertOut])

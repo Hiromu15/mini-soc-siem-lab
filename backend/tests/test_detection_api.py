@@ -121,6 +121,22 @@ def test_stats_summary_returns_dashboard_shape(client: TestClient) -> None:
     assert isinstance(data["latest_alerts"], list)
 
 
+def test_scheduler_status_returns_configuration(client: TestClient) -> None:
+    response = client.get("/detect/scheduler")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert set(data) == {
+        "enabled",
+        "running",
+        "interval_seconds",
+        "last_run_at",
+        "last_created_alerts",
+        "last_error",
+    }
+    assert data["interval_seconds"] >= 5
+
+
 def ingest_nginx(
     client: TestClient,
     *,
@@ -138,4 +154,3 @@ def ingest_nginx(
         "user_agent": user_agent,
     }
     assert client.post("/ingest/nginx", json=payload).status_code == 200
-

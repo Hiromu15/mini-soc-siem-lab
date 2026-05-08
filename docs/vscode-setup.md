@@ -324,8 +324,15 @@ In a second terminal:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\generate_sample_logs.py --send
-curl.exe -X POST http://localhost:8001/detect/run
 curl.exe http://localhost:8001/alerts
+```
+
+Docker Compose enables scheduled detection by default. After sending sample
+logs, wait up to 30 seconds and refresh the dashboard. If you want immediate
+results, run:
+
+```powershell
+curl.exe -X POST http://localhost:8001/detect/run
 ```
 
 You can also use VSCode tasks:

@@ -18,10 +18,28 @@ Rules are seeded into the `detection_rules` table at API startup. Each rule has
 an `enabled` flag so future versions can add rule management without changing
 the detection engine interface.
 
+## Scheduled Detection
+
+`detector-api` can run detection automatically in the background. Docker Compose
+enables this by default:
+
+```env
+DETECTION_SCHEDULER_ENABLED=true
+DETECTION_INTERVAL_SECONDS=30
+```
+
+Manual execution is still available through:
+
+```bash
+curl -X POST http://localhost:8001/detect/run
+```
+
+The scheduler checks events already ingested into the database. It does not scan
+external systems, and it does not automatically attack or probe any target.
+
 ## Limitations
 
 - Rules are signature and threshold based.
 - The MVP does not correlate across many data sources.
 - Alerts are deduplicated by alert type, IP, path, and open status.
 - The lab intentionally avoids exploit execution and external scanning.
-

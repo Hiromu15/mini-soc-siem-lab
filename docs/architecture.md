@@ -32,7 +32,8 @@ flowchart LR
 3. The demo app writes authentication JSON lines to `logs/app/auth.log`.
 4. Sample logs or local Compose log files can be sent to `detector-api` through
    `/ingest/nginx` and `/ingest/auth`.
-5. `/detect/run` evaluates stored events against enabled rules.
+5. `/detect/run` evaluates stored events against enabled rules. In Docker
+   Compose, the detector can also run this step automatically on a schedule.
 6. Alerts are stored in PostgreSQL and shown by `/alerts` and `/stats/summary`.
 
 ## Phase Verification
@@ -79,10 +80,12 @@ Command:
 ```bash
 curl http://localhost:8001/alerts
 curl http://localhost:8001/stats/summary
+curl http://localhost:8001/detect/scheduler
 ```
 
 Expected result: alert records include `recommendation`, and the summary contains
 severity counts, attack type counts, source IP ranking, and latest alerts.
+Scheduler status shows whether automatic detection is enabled.
 
 ### Phase 5
 
